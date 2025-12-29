@@ -295,7 +295,7 @@ O script gera automaticamente um arquivo JSON com todos os dados:
 
 ```json
 {
-  "url": "https://morar.com.br",
+  "url": "https://meusite.com.br",
   "status": "Parcialmente Conforme",
   "conformity_score": 65,
   "issues": [
@@ -323,7 +323,7 @@ O script gera automaticamente um arquivo JSON com todos os dados:
     },
     "privacy_policy": {
       "found": true,
-      "url": "https://morar.com.br/politicas-de-privacidade",
+      "url": "https://meusite.com.br/politicas-de-privacidade",
       "has_cookie_section": false
     }
   }
@@ -357,42 +357,6 @@ python3 lgpd_cookie_ckecker.py https://seu-site.com.br --no-headless
 
 ---
 
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Por favor:
-
-1. Faça um Fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
----
-
-## 📄 Licença
-
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
-
----
-
-## 📞 Suporte
-
-Encontrou um problema ou tem uma sugestão?
-
-- 🐛 **Reportar Bug:** [Abrir Issue](https://github.com/seu-usuario/lgpd-cookie-checker/issues)
-- 💡 **Sugerir Feature:** [Abrir Discussion](https://github.com/seu-usuario/lgpd-cookie-checker/discussions)
-- 📧 **Email:** seu-email@exemplo.com
-
----
-
-## 🙏 Agradecimentos
-
-- [ANPD](https://www.gov.br/cidadania/pt-br/acesso-a-informacao/lgpd) - Autoridade Nacional de Proteção de Dados
-- [Selenium](https://www.selenium.dev/) - Web automation framework
-- [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) - HTML parsing library
-
----
-
 ## 📚 Referências
 
 - [Lei Geral de Proteção de Dados (LGPD)](http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
@@ -401,6 +365,5 @@ Encontrou um problema ou tem uma sugestão?
 
 ---
 
-**Desenvolvido com ❤️ para conformidade com LGPD**
+**Desenvolvido para conformidade com LGPD**
 
-Última atualização: Dezembro de 2025
