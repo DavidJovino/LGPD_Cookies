@@ -49,12 +49,12 @@ cd LGPD_Cookies
 
 ```bash
 # Linux/macOS
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv cookie_checker
+source cookie_checker/bin/activate
 
 # Windows
-python -m venv venv
-venv\Scripts\activate
+python -m venv cookie_checker
+cookie_checker\Scripts\activate
 ```
 
 ### Passo 3: Instalar Dependências
