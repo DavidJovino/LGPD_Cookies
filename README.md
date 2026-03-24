@@ -41,7 +41,7 @@ O **LGPD Cookie Checker** automatiza a auditoria de conformidade de cookies em w
 ### Passo 1: Clonar o Repositório
 
 ```bash
-git clone https://github.com/seu-usuario/lgpd-cookie-checker.git
+git clone https://github.com/davidjovino/lgpd-cookie-checker.git
 cd lgpd-cookie-checker
 ```
 
