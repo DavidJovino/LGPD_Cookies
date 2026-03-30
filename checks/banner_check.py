@@ -1,7 +1,7 @@
+import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import time
 from utils.dom_finder import (
     find_element_by_text,
     find_element_by_aria_label,
@@ -9,12 +9,46 @@ from utils.dom_finder import (
     find_banner_by_text_content,
 )
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Padrões de texto para botões
+# ─────────────────────────────────────────────────────────────────────────────
+_REJECT_PATTERNS = [
+    "rejeitar", "recusar", "deny", "reject", "negar", "descartar",
+    "deny cookies", "reject all", "recusar tudo", "refuse all",
+    "não aceitar", "decline", "refuse", "disallow",
+    "apenas essenciais", "somente essenciais", "only essential",
+    "essential only", "necessários apenas",
+]
+
+_ACCEPT_PATTERNS = [
+    "aceitar todos", "aceitar", "accept all", "accept", "allow all",
+    "allow", "permitir", "concordo", "agree", "ok",
+    "aceitar cookies", "allow cookies",
+]
+
+_POLICY_PATTERNS = [
+    "política", "policy", "privacidade", "privacy", "cookies",
+    "saiba mais", "learn more", "leia mais", "read more",
+    "termos", "terms",
+]
+
+# Seletores CSS semânticos (Estratégia 1)
+_CSS_SELECTORS = [
+    ".cc-window", ".cc-banner", ".cc-compliance", ".cc-message",
+    "[class*='cookie']", "[id*='cookie']",
+    "[class*='consent']", "[id*='consent']",
+    "[class*='cc-']", "[class*='compliance']",
+    "[role='dialog']", "[role='alert']",
+    ".cookiebot", ".cookie-banner", ".cookie-consent",
+    "[data-component*='cookie']", "[id*='gdpr']", "[class*='gdpr']",
+    "[id*='lgpd']", "[class*='lgpd']",
+    "[id*='privacy']", "[class*='privacy-banner']",
+]
+
 
 def check_first_level_banner(driver) -> dict:
     """
-    Verifica o banner de primeiro nível com múltiplas estratégias.
-
-    Estratégias em ordem de prioridade:
+    Verifica o banner de primeiro nível com múltiplas estratégias:
       1. Seletores CSS semânticos (cookieconsent, cc-, consent, cookie…)
       2. z-index alto + posição fixed (banners Tailwind/custom sem classe semântica)
       3. Busca por texto no DOM (título/corpo do banner)
@@ -29,31 +63,19 @@ def check_first_level_banner(driver) -> dict:
     }
 
     try:
-        # Aguarda carregamento inicial
+        # Aguarda carregamento inicial da página
         try:
             WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((
-                    By.CSS_SELECTOR,
-                    ".cc-compliance, .cc-message, [class*='cookie'], "
-                    "[id*='cookie'], [class*='consent'], [id*='consent']",
-                ))
+                EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
             )
         except Exception:
-            time.sleep(4)
-
-        # ESTRATÉGIA 1: Seletores CSS semânticos
-        css_selectors = [
-            ".cc-window", ".cc-banner", ".cc-compliance", ".cc-message",
-            "[class*='cookie']", "[id*='cookie']",
-            "[class*='consent']", "[id*='consent']",
-            "[class*='cc-']", "[class*='compliance']",
-            "[role='dialog']", "[role='alert']",
-            ".cookiebot", ".cookie-banner", ".cookie-consent",
-            "[data-component*='cookie']",
-        ]
+            pass
+        time.sleep(4)
 
         banner_element = None
-        for selector in css_selectors:
+
+        # ── ESTRATÉGIA 1: Seletores CSS semânticos ────────────────────────────
+        for selector in _CSS_SELECTORS:
             try:
                 elements = driver.find_elements(By.CSS_SELECTOR, selector)
                 if elements:
@@ -62,18 +84,20 @@ def check_first_level_banner(driver) -> dict:
             except Exception:
                 continue
 
-        # ESTRATÉGIA 2: Elemento fixed com z-index alto (Tailwind / custom)
+        # ── ESTRATÉGIA 2: Elemento fixed/sticky com z-index alto ──────────────
+        # CORREÇÃO: usa XPath gerado pelo JS em vez de retornar o elemento
         if banner_element is None:
             banner_element = _find_banner_by_position(driver)
 
-        # ESTRATÉGIA 3: Busca por texto no DOM
+        # ── ESTRATÉGIA 3: Busca por texto no DOM ──────────────────────────────
         if banner_element is None:
             banner_element = find_banner_by_text_content(driver)
 
-        # Análise do banner encontrado
+        # ── Análise do banner encontrado ──────────────────────────────────────
         if banner_element:
             banner_info["found"] = True
 
+            # Tenta subir para o container raiz do banner
             try:
                 banner_root = banner_element.find_element(
                     By.XPATH,
@@ -94,116 +118,29 @@ def check_first_level_banner(driver) -> dict:
                 pass
 
             # Botão de rejeição
-            reject_patterns = [
-                "rejeitar", "recusar", "deny", "reject", "negar", "descartar",
-                "deny cookies", "reject all", "recusar tudo", "refuse all",
-                "não aceitar", "decline", "refuse", "disallow",
-                "apenas essenciais", "somente essenciais", "only essential",
-            ]
-
-            has_reject = (
-                find_element_by_text(banner_root, reject_patterns,
-                                     tag_names=["button", "a", "div", "span"],
-                                     require_displayed=False)
-                or find_element_by_aria_label(banner_root, reject_patterns,
-                                              require_displayed=False)
-                or find_element_by_class(banner_root,
-                                         ["deny", "reject", "refuse",
-                                          "decline", "recusar", "cc-deny"],
-                                         require_displayed=False)
+            banner_info["has_reject_button"] = _has_button(
+                driver, banner_root, _REJECT_PATTERNS
             )
-
-            if not has_reject:
-                for sel in [
-                    ".cc-compliance .cc-btn.cc-deny", ".cc-deny",
-                    "a[role='button'][aria-label*='deny']", "a.cc-btn.cc-deny",
-                    "button[class*='essencial']", "button[class*='essential']",
-                ]:
-                    if driver.find_elements(By.CSS_SELECTOR, sel):
-                        has_reject = True
-                        break
-
-            banner_info["has_reject_button"] = has_reject
 
             # Botão de aceitação
-            accept_patterns = [
-                "aceitar", "accept", "allow", "permitir", "concordo",
-                "allow cookies", "accept all", "aceitar tudo", "permit all",
-                "agree", "aceitar todos", "accept all cookies",
-            ]
-
-            has_accept = (
-                find_element_by_text(banner_root, accept_patterns,
-                                     tag_names=["button", "a", "div", "span"],
-                                     require_displayed=False)
-                or find_element_by_aria_label(banner_root, accept_patterns,
-                                              require_displayed=False)
-                or find_element_by_class(banner_root,
-                                         ["allow", "accept", "agree",
-                                          "aceitar", "cc-allow"],
-                                         require_displayed=False)
+            banner_info["has_accept_button"] = _has_button(
+                driver, banner_root, _ACCEPT_PATTERNS
             )
 
-            if not has_accept:
-                for sel in [
-                    ".cc-compliance .cc-btn.cc-allow", ".cc-allow",
-                    "a[role='button'][aria-label*='allow']", "a.cc-btn.cc-allow",
-                ]:
-                    if driver.find_elements(By.CSS_SELECTOR, sel):
-                        has_accept = True
-                        break
-
-            banner_info["has_accept_button"] = has_accept
-
-            # Link de política de cookies
-            policy_patterns = [
-                "política", "policy", "cookies", "privacidade", "privacy",
-                "termos", "terms", "saiba mais", "learn more",
-                "mais informações",
-            ]
-
-            has_policy = False
-            try:
-                for link in banner_root.find_elements(By.TAG_NAME, "a"):
-                    link_text = (link.text or "").lower()
-                    link_href = (link.get_attribute("href") or "").lower()
-                    if any(p.lower() in link_text or p.lower() in link_href
-                           for p in policy_patterns):
-                        has_policy = True
-                        break
-            except Exception:
-                pass
-
-            if not has_policy:
-                try:
-                    for link in driver.find_elements(By.TAG_NAME, "a"):
-                        link_text = (link.text or "").lower()
-                        link_href = (link.get_attribute("href") or "").lower()
-                        if any(p.lower() in link_text or p.lower() in link_href
-                               for p in policy_patterns):
-                            has_policy = True
-                            break
-                except Exception:
-                    pass
-
-            banner_info["has_cookie_policy_link"] = has_policy
-
-            if not has_reject:
-                banner_info["issues"].append(
-                    "Botão de rejeição de cookies não encontrado"
-                )
-            if not has_accept:
-                banner_info["issues"].append(
-                    "Botão de aceitação de cookies não encontrado"
-                )
-            if not has_policy:
-                banner_info["issues"].append(
-                    "Link para política de cookies não encontrado"
-                )
-        else:
-            banner_info["issues"].append(
-                "Banner de cookies não encontrado no site"
+            # Link para política de cookies
+            banner_info["has_cookie_policy_link"] = _has_policy_link(
+                driver, banner_root
             )
+
+        # ── Problemas ─────────────────────────────────────────────────────────
+        if not banner_info["found"]:
+            banner_info["issues"].append("Banner de cookies não encontrado no site")
+        if not banner_info["has_reject_button"]:
+            banner_info["issues"].append("Botão de rejeição de cookies não encontrado")
+        if not banner_info["has_accept_button"]:
+            banner_info["issues"].append("Botão de aceitação de cookies não encontrado")
+        if not banner_info["has_cookie_policy_link"]:
+            banner_info["issues"].append("Link para política de cookies não encontrado")
 
     except Exception as e:
         banner_info["issues"].append(f"Erro ao verificar banner: {str(e)}")
@@ -211,33 +148,164 @@ def check_first_level_banner(driver) -> dict:
     return banner_info
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers internos
+# ─────────────────────────────────────────────────────────────────────────────
+
 def _find_banner_by_position(driver):
     """
-    Encontra banners que usam CSS utilitário (Tailwind) sem classe semântica,
-    detectando elementos com position:fixed/sticky e z-index alto que contenham
+    Detecta banners que usam CSS utilitário (Tailwind) sem classe semântica,
+    buscando elementos com position:fixed/sticky e z-index >= 100 que contenham
     texto relacionado a cookies/privacidade.
+
+    CORREÇÃO: em vez de retornar o elemento WebDriver via execute_script
+    (que falha quando o elemento não tem id), usa o índice do elemento no
+    array querySelectorAll para localizá-lo depois via XPath/CSS.
     """
+    keywords = [
+        'cookie', 'privacidade', 'privacy', 'consent', 'consentimento',
+        'lgpd', 'gdpr', 'valorizamos', 'essenciais', 'aceitar',
+        'rejeitar', 'personalizar',
+    ]
     try:
-        candidates = driver.execute_script("""
-            const keywords = ['cookie', 'privacidade', 'privacy', 'consent',
-                              'consentimento', 'lgpd', 'gdpr', 'valorizamos',
-                              'essenciais', 'aceitar', 'rejeitar', 'personalizar'];
-            const results = [];
-            document.querySelectorAll('*').forEach(el => {
+        # Retorna informações do elemento (não o elemento em si)
+        info = driver.execute_script("""
+            const keywords = arguments[0];
+            const all = document.querySelectorAll('*');
+            for (let i = 0; i < all.length; i++) {
+                const el = all[i];
                 const style = window.getComputedStyle(el);
                 const pos = style.position;
                 const z = parseInt(style.zIndex) || 0;
                 if ((pos === 'fixed' || pos === 'sticky') && z >= 100) {
                     const text = (el.innerText || '').toLowerCase();
                     if (keywords.some(k => text.includes(k)) && text.length > 20) {
-                        results.push(el);
+                        // Retorna seletor único para o elemento
+                        const id = el.id ? '#' + el.id : null;
+                        const cls = el.className && typeof el.className === 'string'
+                            ? el.className.trim().split(/\\s+/).slice(0, 3).join('.')
+                            : null;
+                        return {
+                            tag: el.tagName.toLowerCase(),
+                            id: id,
+                            cls: cls,
+                            text_preview: text.substring(0, 80)
+                        };
                     }
                 }
-            });
-            return results;
-        """)
-        if candidates:
-            return candidates[0]
+            }
+            return null;
+        """, keywords)
+
+        if not info:
+            return None
+
+        # Localiza o elemento via Selenium usando as informações retornadas
+        tag = info.get("tag", "*")
+        el_id = info.get("id")
+        cls = info.get("cls", "")
+
+        # Tenta por ID primeiro
+        if el_id:
+            els = driver.find_elements(By.CSS_SELECTOR, el_id)
+            if els:
+                return els[0]
+
+        # Tenta por tag + primeiras classes
+        if cls:
+            selector = f"{tag}.{cls}".replace(" ", ".")
+            try:
+                els = driver.find_elements(By.CSS_SELECTOR, selector)
+                if els:
+                    return els[0]
+            except Exception:
+                pass
+
+        # Fallback: XPath por texto parcial
+        text_preview = info.get("text_preview", "")
+        if text_preview:
+            first_word = text_preview.strip().split()[0] if text_preview.strip() else ""
+            if first_word:
+                xpath = (
+                    f"//{tag}[contains(translate(normalize-space(.), "
+                    f"'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "
+                    f"'{first_word}')]"
+                )
+                els = driver.find_elements(By.XPATH, xpath)
+                if els:
+                    return els[0]
+
     except Exception:
         pass
+
     return None
+
+
+def _has_button(driver, container, patterns: list) -> bool:
+    """
+    Verifica se existe um botão com texto correspondente aos padrões,
+    buscando tanto no container quanto no documento inteiro como fallback.
+    """
+    # Busca no container
+    if find_element_by_text(container, patterns, tag_names=["button", "a", "input", "div", "span"]):
+        return True
+    if find_element_by_aria_label(container, patterns):
+        return True
+
+    # Fallback: busca no documento inteiro via JavaScript
+    try:
+        found = driver.execute_script("""
+            const patterns = arguments[0];
+            const btns = document.querySelectorAll(
+                'button, a[role="button"], input[type="button"], input[type="submit"]'
+            );
+            for (const btn of btns) {
+                const text = (btn.innerText || btn.value || '').toLowerCase().trim();
+                const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+                if (patterns.some(p => text.includes(p) || aria.includes(p))) {
+                    return true;
+                }
+            }
+            return false;
+        """, patterns)
+        if found:
+            return True
+    except Exception:
+        pass
+
+    return False
+
+
+def _has_policy_link(driver, container) -> bool:
+    """
+    Verifica se existe link para política de cookies/privacidade.
+    """
+    # Busca no container
+    if find_element_by_text(container, _POLICY_PATTERNS, tag_names=["a"]):
+        return True
+    if find_element_by_aria_label(container, _POLICY_PATTERNS):
+        return True
+
+    # Fallback: busca no documento inteiro
+    try:
+        found = driver.execute_script("""
+            const patterns = arguments[0];
+            const links = document.querySelectorAll('a[href]');
+            for (const link of links) {
+                const text = (link.innerText || '').toLowerCase().trim();
+                const href = (link.href || '').toLowerCase();
+                const aria = (link.getAttribute('aria-label') || '').toLowerCase();
+                if (patterns.some(p =>
+                    text.includes(p) || href.includes(p) || aria.includes(p)
+                )) {
+                    return true;
+                }
+            }
+            return false;
+        """, _POLICY_PATTERNS)
+        if found:
+            return True
+    except Exception:
+        pass
+
+    return False

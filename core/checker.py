@@ -26,44 +26,52 @@ class LGPDCookieChecker:
 
     def run(self) -> dict:
         try:
-            # 1️⃣ inicia driver
+            # 1️⃣ Inicia o driver
             self.driver = init_driver(
                 headless=self.headless,
                 timeout=self.timeout
             )
 
-            # 2️⃣ acessa o site
+            # 2️⃣ Acessa o site
             self.driver.get(self.url)
 
-            # 3️⃣ executa checks
+            # 3️⃣ Verifica o banner de primeiro nível
+            #    (deve ser feito antes de aceitar cookies para capturar
+            #     botões e links enquanto o banner ainda está visível)
             self.results["details"]["first_level_banner"] = (
                 check_first_level_banner(self.driver)
             )
 
-            self.results["details"]["cookies"] = (
-                check_cookies_storage(self.driver)
-            )
-
+            # 4️⃣ Verifica a política de privacidade
+            #    (feito antes de aceitar o banner, pois o link pode estar
+            #     no banner e desaparecer após o consentimento)
             self.results["details"]["privacy_policy"] = (
                 check_privacy_policy(self.driver)
             )
 
-            # 4️⃣ coleta issues
+            # 5️⃣ Verifica cookies
+            #    (check_cookies_storage aceita o banner internamente para
+            #     carregar cookies de analytics/marketing de terceiros)
+            self.results["details"]["cookies"] = (
+                check_cookies_storage(self.driver)
+            )
+
+            # 6️⃣ Coleta todos os issues
             for check in self.results["details"].values():
                 if "issues" in check:
                     self.results["issues"].extend(check["issues"])
 
-            # 5️⃣ score
+            # 7️⃣ Calcula pontuação de conformidade
             self.results["conformity_score"] = calculate_conformity_score(
                 self.results
             )
 
-            # 6️⃣ recomendações
+            # 8️⃣ Gera recomendações
             self.results["recommendations"] = generate_recommendations(
                 self.results
             )
 
-            # 7️⃣ status
+            # 9️⃣ Define status
             score = self.results["conformity_score"]
             if score >= 80:
                 self.results["status"] = "Conforme"
@@ -75,9 +83,8 @@ class LGPDCookieChecker:
             return self.results
 
         finally:
-            # 8️⃣ garante fechamento do driver
             close_driver(self.driver)
-    
+
     def print_report(self):
         """Imprime o relatório formatado"""
         print_report(self.results)
