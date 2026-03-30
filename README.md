@@ -93,7 +93,7 @@ python3 lgpd_cookie_ckecker.py https://seu-site.com.br --json --no-headless
 RELATÓRIO DE CONFORMIDADE COM LGPD - COOKIES
 ======================================================================
 
-URL: https://morar.com.br
+URL: https://seu-site.com.br
 Status: Parcialmente Conforme
 Pontuação de Conformidade: 65/100
 
@@ -113,8 +113,8 @@ Total de cookies: 9
 Categorização:
   ANALYTICS: 4 cookie(s)
     - _ga
-    - _ga_G2DJBY4P6F
-    - _gat_UA-61123573-1
+    - _ga_G12MISMSN
+    - _gat_UA-61672638-7
   MARKETING: 1 cookie(s)
     - _fbp
   UNKNOWN: 4 cookie(s)
@@ -126,7 +126,7 @@ Categorização:
 POLÍTICA DE PRIVACIDADE
 ----------------------------------------------------------------------
 Política encontrada: ✓
-URL: https://morar.com.br/politicas-de-privacidade
+URL: https://seu-site.com.br/politicas-de-privacidade
 Seção de cookies: ✗
 Bases legais especificadas: ✗
 Categorias de cookies: ✗
@@ -316,7 +316,7 @@ O script gera automaticamente um arquivo JSON com todos os dados:
     "cookies": {
       "total_cookies": 9,
       "categories": {
-        "analytics": ["_ga", "_ga_G2DJBY4P6F"],
+        "analytics": ["_ga", "_ga_G2DJ2356F45"],
         "marketing": ["_fbp"],
         "unknown": ["_clck", "_gid"]
       }
@@ -341,6 +341,10 @@ O script gera automaticamente um arquivo JSON com todos os dados:
 brew install chromedriver
 
 # Ou baixe manualmente em: https://chromedriver.chromium.org/
+
+# Ou instalar no terminal:
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install -y ./google-chrome-stable_current_amd64.deb
 ```
 
 ### Erro: "Timeout waiting for element"
